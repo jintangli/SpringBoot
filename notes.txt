@@ -1,0 +1,166 @@
+initialize restful service with spring boot
+	**create project in start.spring.io
+		generate a: maven project
+		with: java
+		spring boot: 2.0.0 or the latest
+		
+	project metadata
+		**require group id and artifact id for any maven project
+		group is analog of *package
+			group: com.firstproject.rest.webservices
+		artifact is analog of *main class
+			artifact: restful-web-services
+			
+	dependencies
+		libraries that will be imported when created project
+		selected dependencies:
+			web, DevTools, JPA, H2
+			
+	click on button 'Generate project'
+		start.spring.io will create maven project and put it in a zip
+	
+	download that project into local machine
+		unzip the file into some folder in hard drive
+	
+	launch eclipse
+		import project
+			file -> import -> <root directory of unzipped project>
+			there should be pom.xml file in root directory
+			
+		click on finish button
+			maven will download all the dependencies listed in pom
+			set up the entire project
+	
+	project directory structure
+		src/main/java
+			contains all java code
+				package: com.firstproject.rest.webservices.restfulwebservices
+				class: RestfulWebServiceApplication.java
+		src/main/resouce
+			contains property files
+		src/test/java
+			contains test cases
+		*pom.xml
+			contains dependencies we chosen in start.spring.io
+				the four starters we chosen
+		*Maven Dependencies
+			*big list of dependencies installed by Maven 
+				*because of the starters we chosen
+	
+	start application
+		go to file 
+			
+			RestfulWebServiceApplication.java
+				@SpringBootApplication
+				public class RestfulWebServiceApplication{
+					public static void main(String[] args){
+						SpringApplication.run(RestfulWebServiceApplication.class, 
+											  args);
+					}
+				}
+		
+		right click -> run as Java application
+			tomcat server should have started at port 8080
+			
+		
+understanding restful service
+	rest = representational state transfer
+		**make best use of http
+			**http mehtod
+				post, put, get, delete
+			**http status codes
+				200, 204, 400
+		
+		resource is the key abstraction
+			resource has an uri
+				/users/1
+			resource has different representation
+				xml, json
+				
+course project: Social Media Application
+	User -> Posts
+		one to many relationship
+	
+	--retrieve all users 		- get /users
+	--create a user				- post /users
+	--retrieve one user			- get /users/{id} -> /users/1
+	--delete a user				- delete /users/{id} ->/users/1
+	
+	--retrieve all posts for a user 	- get /users/{id}/posts
+	--create a posts for a user			- post /users/{id}/posts
+	--retrieve details of a post 		- get /users/{id}/posts/{post_id}
+	
+creating simple service
+	create new class under com.firstproject.rest.webservices.restfulwebservices
+		HelloWorldContoller.java
+	
+	**need to inform spring that this class is a *controller
+		decorate *class with @RestController
+		
+	**need to map the method to the *get *uri /hello-world
+		decorate method with @RequestMapping
+			method=RequestMethod.GET
+			path="/hello-world"
+		*better way decorating method with @GetMapping
+			path="/hello-world"
+			
+	enhancing the method to return a bean
+		define *new method return a *bean HelloWorldBean
+			public HelloWorldBean helloWorldBean()
+		
+		decorate method with
+			@GetMapping(path="/hello-world-bean")
+			
+		create class HelloWorldBean
+			**make sure class has *get method
+			
+		**when call in browser *bean is automatically convert to *json
+	
+		@RestController
+		public class HelloWorldContoller{
+			
+			//@RequestMapping(method=RequestMethod.GET, path="/hello-world")
+			@GetMapping(path="/hello-world")
+			public String helloWorld(){
+				return "Hello World"
+			}
+			
+			@GetMapping(path="/hello-world-bean")
+			public HelloWorldBean helloWorldBean(){
+				return new HelloWorldBean("Hello World");
+			} 
+		
+		}
+		
+		public class HelloWorldBean{
+			private String message;
+			
+			public HelloWorldBean(String message){
+				this.message = message;
+			}
+			
+			public void setMessage(String message){
+				this.message = message;
+			}
+			
+			public String getMessage(){
+				return this.message;
+			}
+			
+			@Override
+			public String toString(){
+				return String.format("HelloWorldBean [message=%s]", message);
+			}
+			
+		}
+	
+	call this method from browser
+		type 
+			localhost:8080/hello-world-bean
+		return
+			{message: "Hello World"}
+		
+	
+		
+	
+			
