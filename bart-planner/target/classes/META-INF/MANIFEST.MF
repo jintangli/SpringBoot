@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Implementation-Title: bart-planner
+Implementation-Version: 0.0.1
+Built-By: Jin
+Implementation-Vendor-Id: com.htun.khine
+Build-Jdk: 1.8.0_191
+Implementation-URL: http://www.localhost.com
+Created-By: Maven Integration for Eclipse
+
