@@ -1,0 +1,698 @@
+
+implement get method for user resource
+
+	** @Component and @Autowired
+	
+		decorate a service *class with *@Component
+			@Component allows spring to *manage this bean
+				
+				@Component
+				public class UserDaoService {
+					private static List<User> users = new ArrayList<>();
+					private static int usersCount = 2;
+					
+					static {
+						users.add(new User(1, "Jin", new Date());
+						users.add(new User(2, "Erica", new Date());
+					}
+					
+					public List<User> findAll(){
+						//return users;
+					}
+					
+					public User save(User user){
+						//users.add(user);
+					}
+				}
+				
+		decorate a class *field with @Autowired
+			@Autowired will have spring to *assign this field 
+				an instance of a class that is decorated with @Component
+				
+				@RestController
+				public class UserResource{
+					
+					@Autowired
+					private UserDaoService service;
+					
+					@GetMapping("/users")
+					public List<User> retrieveAllUsers(){
+						return service.findAll();
+					
+					}
+					
+					@GetMapping("/users/{id}")
+					public User retrieveUser(@PathVariable int id){
+						return  service.findOne(id);
+					
+					}
+				
+				}
+	
+	
+	** @RestController, @GetMapping, @PathVariable
+		
+		decorate class with @RestController
+			to make this class acting as controller
+			
+		decorate function with @GetMapping
+			to map *uri and http *get mothod to a function
+		
+		decorate function parameter with @PathVariable 
+			to have spring insert path variable value when calling function
+			
+	
+
+
+	
+implement post method to create user resource
+	
+	for creating a user
+		input 
+			detail of user	
+		return 
+			**CREATED 201 status
+			**the created URI
+		
+	
+	@PostMapping, @RequestBody
+		
+		decorate function with @PostMapping
+			to map *uri and http *post mothod to a function
+		
+		decorate function parameter with @RequestBody
+			to have spring insert request body when calling function
+				**whatever is passed in the request body will map to fields of function parameter
+				**keys in the request body will need to match the fields of function parameter
+			
+				@PostMapping("/users")
+				public void createUser(@RequestBody User user){
+					User savedUser = service.save(user);
+				}
+		
+		** for this to work, User class *MUST have *default constructor
+			
+				protected User(){ }
+		
+		use rest client to sent the post request
+			postman is a rest client
+				inall it as app or as chrome plugin
+				
+			**request body example
+				{
+					"name": "Sen",
+					"birthDate": "1987-02-14T04:29:24.054+000"
+				}
+			
+		
+enhancing post method to return correct http status and location
+	
+	need to return
+		**CREATED status
+			use **ResponseEntity to set the created status
+				
+		**the created URI
+			use ServletUriComponentsBuilder to get the current URI
+				then append the new user id to the end of it
+			
+			@PostMapping("/users")
+			public ResponseEntity<Object> createUser(@RequestBody User user){
+				User savedUser = service.save(user);
+				
+				URI location = ServletUriComponentsBuilder
+								.fromCurrentRequest()
+								.path("/{id}")
+								.buildAndExpand(savedUser.getId())
+								.toUri();
+				
+				return ResponseEntity<User>.created(location).build();
+			}
+	
+	
+	
+	
+implement exception handling 404 resource not found
+	
+	**implement exception that 
+		extends *RuntimeException
+		**decorated with 	@ResponseStatus(HttpStatus.NOT_FOUND)
+			use @ResponseStatus to convert exception into response status
+				status will be status:404, error: Not Found, message: id-500
+			otherwise
+				status will be status:500, error: internal server error, message: id-500
+		
+			@ResponseStatus(HttpStatus.NOT_FOUND)
+			public class UserNotFoundException extends RuntimeException{
+				public UserNotFoundException(String message){
+					super(message);
+				}
+			}
+	
+		
+	**need to throw UserNotFoundException when user is not found
+	
+		@GetMapping("/users/{id}")
+		public User retrieveUser(@PathVariable int id){
+			User user = service.findOne(id);
+			if (user == null)
+				throw new UserNotFoundException("id-" + id);
+			return user;
+		}
+	
+	
+
+
+implement generic exception handling for all resource
+	Spring already has it *own/default exception structure
+		which contains timestamp, status, error, message, path,
+		
+	** to define/customize an organization's own standard exception structure used by all RESTful service
+		
+		create new class ExceptionResponse
+			** assuming each exception should have the following *structure info
+				timeStamp, message, detail
+		
+			public class ExceptionResponse{
+				private Date timestamp;
+				private String message;
+				private String details;
+				
+				public ExceptionResponse(Date timestamp, String message, String details){
+					super();
+					this.timestamp = timestamp;
+					this.message = message;
+					this.details = details;
+				}
+				
+				// getters for all fields
+			}
+			
+	return exception in this format whenever it happens across all RESTful service
+			** use ResponseEntityExceptionHandler
+			
+	** ResponseEntityExceptionHandler
+		create new class 
+			** extends ResponseEntityExceptionHandler
+			** every application need to have class like this to 
+				define what is the status to return for different kind of exceptions
+			
+			** decorated with @RestController
+				because it is providing response back in case of exceptions
+				
+			** decorated with @ControllerAdvise
+				want this to be applicable/shared across all other controllers classes
+			
+			@ControllerAdvise
+			@RestController
+			public class CustomizedResponseEntityExceptionHandler extends ResponseEntityExceptionHandler{
+					
+				@ExceptionHandler(Exception.class)
+				public final ResponseEntity<Object> handleAllException(Exception ex, WebRequest request){
+						ExceptionResponse exceptionResponse = new ExceptionResponse(new Date(), 
+																					ex.getMessage(), 
+																					request.getDescription(false));
+						
+						return new ResponseEntity(exceptionResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+				
+				}
+			
+				@ExceptionHandler(UserNotFoundException.class)
+				public final ResponseEntity<Object> handleUserNotFoundException(UserNotFoundException ex, WebRequest request){
+						ExceptionResponse exceptionResponse = new ExceptionResponse(new Date(), 
+																					ex.getMessage(), 
+																					request.getDescription(false));
+						
+						return new ResponseEntity(exceptionResponse, HttpStatus.NOT_FOUND);
+				
+				}
+			
+			}
+		
+		**use @ExceptionHandler(Exception.class) to decorate handler method
+			**use Exception.class for handling all exceptions
+			
+			
+	
+implement DELETE method to delete a user resource
+	
+	** use @DeleteMapping decorater of deleting resource
+		
+		@DeleteMapping("/users/{id}")
+		public void deleteUser(@PathVariable int id){
+			User user  = service.deleteById(id);
+			if(user == null)
+				throw new UserNotFoundException("id-" + id);
+		}
+	
+
+
+implement Validation for RESTful services
+	
+	use validation-api to add avalidation on bean
+		** add @Valid to function parameter
+		
+	java validation api and implementation is in class path
+		because of spring boot starter web
+		**can look up validation-api in class path and find more info about available validations
+			example: Max, Min, NotNull, Digits, Past, Future ... 
+		
+		@PostMapping("/users")
+		public ResponseEntity<Object> createUser(@Valid @RequestBody User user){
+			User savedUser = service.save(user);
+			
+			URI location = ServletUriComponentsBuilder
+							.fromCurrentRequest()
+							.path("/{id}")
+							.buildAndExpand(savedUser.getId()).toUri();
+							
+			return ResponseEntity.created(location).build();
+		}
+	
+	add validation on User bean class
+		
+		public class User{
+		
+			private Integer id;
+			
+			//name need to be at least two char
+			@Size(min=2, message="Name should have at least 2 char")
+			private String name;
+			
+			@Past
+			private Date birthDate;
+			
+			//need to have this constructor for @PostMapping to work
+			protected User(){}
+		
+		}
+	
+	
+	** need to implement handleMethodArgumentNotValid method in CustomizedResponseEntityExceptionHandler
+		for better validation error message
+		
+	**call getBindingResult for details on validation fail 
+		can add message to the validation
+			@Size(min=2, message="Name should have at least 2 char")
+		
+		@Override
+		protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, 
+																	  HttpHeaders headers, 
+																	  HttpStatus status, 
+																	  WebRequest request){
+			
+			ExceptionResponse exceptionResponse = new ExceptionResponse(new Date(), 
+																		"validation fail",
+																		ex.getBindingResult.toString()
+																		);
+																		
+			return new ResponseEntity(exceptionResponse, HttpStatus.BAD_REQUEST);
+		}															  
+			
+		
+Implementing HATEOAS for RESTful Service
+	HATEOAS = Hypermedia As The Engine Of Application State
+	
+	**return other *links related to the resource for performing other useful works
+		**need to add dependency to *pom.xml
+			restful-web-services/pom.xml
+				<dependency>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-hateoas</artifactId>
+					<scope>runtime</scope>
+				</dependency>
+		
+		**add links by adding the method associated with that links
+			** ControllerLinkBuilder will enable us to build links from methods
+			
+			@GetMapping("/users/{id}")
+			public Resource<User> retrieveUser(@PathVariable int id){
+				Ueser user = service.findOne(id);
+				if (user == null)
+					throw new UserNotFoundException("id-" + id);
+					
+					Resource<User> resource = new Resource<User>(user);
+					ControllerLinkBuilder linkTo = 
+						ControllerLinkBuilder.linkTo( ControllerLinkBuilder.methodOn(this.getClass()).retrieveAllUsers());
+					resouce.add(linkTo.withRel("all-users"));
+					return resource;
+			}
+	
+	
+**content negotiation -- implement support for xml
+	need to add dependency jackson-dataformat-xml in pom.xml
+		<dependency>
+			<groupId>com.fasterxml.jackson.dataformat</groupId>
+			<artifactId>jackson-dataformat-xml</artifactId>
+		</dependency>
+		
+	**for it to be json or xml
+		just add jackson dataformat to pom.xml
+		
+	
+configuring Auto generation of swagger *documentation
+	presenting the contracts about my RESTful service
+		example: what is the request and response format
+		
+	**swagger is a popular documentation *format for RESTful service
+		add swagger dependency to pom.xml
+			
+			<dependency>
+				<groupId>io.springfox</groupId>
+				<artifactId>springfox-swagger2</artifactId>
+				<version>2.4.0</version>
+			</dependency>
+			
+			<dependency>
+				<groupId>io.springfox</groupId>
+				<artifactId>springfox-swagger-ui</artifactId>
+				<version>2.4.0</version>
+			</dependency>
+	
+		**create java class for swagger config into *root directory
+			@Configuration
+				tells class is a spring bean
+			@Enable Swagger
+			Docket bean inside class
+		
+		*view content generated by Swagger
+			localhost:8080/v2/api-docs
+			or
+			localhost:8080/swagger-ui.html
+			
+			//in SwaggerConfig.java file
+			@Configuration
+			@EnableSwagger2
+			public class SwaggerConfig{
+				@Bean
+				public Docket api(){
+					return new Docket(DocumentationType.SWAGGER_2);
+				}
+			}
+	
+enhancing Swagger documentation with annotation
+	modify the docket bean to add api info
+		
+		private static final Contact DEFAULT_CONTACT = new Contact("Jin","www.mywebsite.com","jinli@berkeley.edu"); 
+		private static final ApiInfo DEFAULT_API_INFO = new ApiInfo(
+				"Api title", "Api description", "1.0", "urn: for term of service",
+				DEFAULT_CONTACT, "Apache 2.0", "http://www.apache.org/license");
+		
+		private static final Set<String> DEFAULT_PRODUCES_AND_CONSUMES =
+			new HashSet<String>(Arrays.asList("application/json", "application/xml"));
+		
+		//in SwaggerConfig.java file
+		@Bean
+		public Docket api(){
+			return new Docket(DocumentationType.SWAGGER_2)
+					.apiInfo(DEFAULT_API_INFO)
+					.produces(DEFAULT_PRODUCES_AND_CONSUMES)
+					.consumes(DEFAULT_PRODUCES_AND_CONSUMES);
+			
+		}
+		
+		
+		also add annotation to the User class
+			decorate class with @ApiModel(description="")
+			decorate field with @APIModelProperty(notes="")
+			more decorations can be find the the class path
+				swagger-annotation-1.5.6.jar
+					example: contact, ApiParams, ApiResponse...
+			
+			//in User.java file
+			@ApiModel(description="all detail about user", )
+			public class User {
+				private Integer id;
+			
+				//name need to be at least two char
+				@Size(min=2, message="Name should have at least 2 char")
+				@ApiModelProperty(notes="name should have at least two characters")
+				private String name;
+				
+				@Past
+				@ApiModelProperty(notes="Birthday should be in the past")
+				private Date birthDate;
+				
+				//need to have this constructor for @PostMapping to work
+				protected User(){}
+				
+			}
+			
+	
+Monitoring APIs with Spring Boot Actuator
+	monitoring if application is available
+	
+	use actuator for monitoring
+		add dependency in pom.xml file
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-starter-actuator</artifactId>
+			</dependency>
+	
+		add dependency for monitoring using browser
+			hal browser looks at the APIs 
+				identifies the links and tools 
+				and shows them on the screen
+				
+			<dependency>
+				<groupId>org.springframework.data</groupId>
+				<artifactId>spring-data-rest-hal-browser</artifactId>
+			</dependency>
+	
+	view the actuator at
+		localhost:8080/actuator
+		
+	**need to configure actuator to provide more info
+		*modify application.properties file
+		
+			//in application.properties file
+			management.endpoints.web.exposure.include=*
+		
+		enable web exposure to expose *all management endpoints over http 
+			enabling all the endpoints could have performance impact
+			*recommend to identify which endpoints want to enable
+		
+		view the details using hal browser at 
+			localhost;8080/browser/index.html
+		
+
+
+implement *static filtering for RESTful service
+	**exclude some fields in our response
+		**use @JsonIgnore to filter out the field
+			for decorating indevidual field
+		**or use @JsonIgnoreProperties(value={"field1", "field2"})
+			for decorating the whole class
+		**only need one of them
+		
+	create new class FilteringController
+		
+		//in FilteringController.java file
+		@RestController
+		public class FilteringController{
+			
+			//value3 will be filtered out
+			@GetMapping("/filtering")
+			public SomeBean retrieveSomeBean(){
+				return new SomeBean("value1", "value2", "value3");
+			}
+			
+			// *all value3 will be filtered out
+			@GetMapping("/filtering-list")
+			public List<SomeBean> retrieveListOfSomeBean(){
+				return Arrays.asList(
+					new SomeBean("value1", "value2", "value3"),
+					new SomeBean("value1", "value3", "value3")
+					);
+			}
+		}
+		
+		// in SomeBean.java file
+		@JsonIgnoreProperties(value={"field1", "field2"})
+		public class SomeBean{
+			private String field1;
+			private String field2;
+			
+			@JsonIgnore
+			private String field3;
+			
+			public SomeBean(String field1, String field2, String field3){ //constructor }
+			
+			//getters and setters for each of the fields
+		}
+	
+	
+implement dynamic filtering for RESTful service
+	*exclude fields base on specific request
+		ie. exlude field1 for some requests and exclude field2 for other requests
+	
+	
+	*need handle filtering in methods that return the bean
+		** use *MappingJacksonValue 
+		** and configure a filter using *FilterProvider
+			**define *filter to be use by FilterProvider 
+		**also need to decorate *bean class with
+			@JsonFilter("SomeBeanFilter")
+	
+		//in FilteringController.java file
+		@RestController
+		public class FilteringController{
+			
+			//want to send field1 and field2
+			@GetMapping("/filtering")
+			public MappingJacksonValue retrieveSomeBean(){
+				SomeBean someBean = new SomeBean("value1", "value2", "value3");
+				SimpleBeanPropertyFilter filter = 
+					SimpleBeanPropertyFilter.filterOutAllExcept("field1", "field2");
+				FilterProvider filters = 
+					new SimpleFilterProvider().addFilter("SomeBeanFilter", filter);
+				MappingJacksonValue mapping = new MappingJacksonValue(someBean);
+				mapping.setFilters(filters);
+				return mapping;
+			}
+			
+			// send field2 and field3 
+			@GetMapping("/filtering-list")
+			public MappingJacksonValue retrieveListOfSomeBean(){
+				List<SomeBean> list = Arrays.asList(
+					new SomeBean("value1", "value2", "value3"),
+					new SomeBean("value1", "value3", "value3"));
+					
+				SimpleBeanPropertyFilter filter = 
+					SimpleBeanPropertyFilter.filterOutAllExcept("field2", "field3");
+				FilterProvider filters = 
+					new SimpleFilterProvider().addFilter("SomeBeanFilter", filter);
+				MappingJacksonValue mapping = new MappingJacksonValue(list);
+				mapping.setFilters(filters);
+				return mapping;
+			}
+		}
+		
+		
+		// in SomeBean.java file
+		@JsonFilter("SomeBeanFilter")
+		public class SomeBean{
+			private String field1;
+			private String field2;
+			
+			@JsonIgnore
+			private String field3;
+			
+			public SomeBean(String field1, String field2, String field3){ //constructor }
+			
+			//getters and setters for each of the fields
+		}
+	
+	
+
+versioning RESTful services
+	**add version to the uri to for version controlling
+	
+		//in PersonVersioningController.java file
+		
+		@RestController
+		PersonVersioningController {
+			
+			@GetMapping("v1/person")
+			public PersonV1 personV1(){
+				return new PersonV1("Bob Charlie");
+			}
+			
+			@GetMapping("v2/person")
+			public PersonV2 personV2(){
+				return new PersonV2(new Name("Bob", "Charlie"));
+			}
+		
+	
+	**use *request parameter for version contolling
+		call uri: http://localhost:8080/person/param?version=1
+		call uri: http://localhost:8080/person/param?version=2
+		
+		//in PersonVersioningController.java file
+		@RestController
+		PersonVersioningController {
+			
+			@GetMapping(value="/person/param", params="version=1")
+			public PersonV1 paramV1(){
+				return new PersonV1("Bob Charlie");
+			}
+			
+			@GetMapping(value="/person/param", params="version=2")
+			public PersonV2 paramV2(){
+				return new PersonV2(new Name("Bob", "Charlie"));
+			}
+		}
+	
+	**use *header parameter for version controlling
+		call uri: http://localhost:8080/person/header
+			also need to pass in header in postman
+				Key: X-API-VERSION, Value: 1
+			**can NOT access directly from browser due to header params
+		
+		//in PersonVersioningController.java file
+		@RestController
+		PersonVersioningController {
+			
+			@GetMapping(value="/person/header", headers="X-API-VERSION=1")
+			public PersonV1 headerV1(){
+				return new PersonV1("Bob Charlie");
+			}
+			
+			@GetMapping(value="/person/header", headers="X-API-VERSION=2")
+			public PersonV2 headerV2(){
+				return new PersonV2(new Name("Bob", "Charlie"));
+			}
+		}
+		
+	**use *produces for version controlling
+		call uri: http://localhost:8080/person/produces
+			also need to pass in header in postman
+				Key: accept, Value: application/vnd.company.app-v1+json
+			**can NOT access directly from browser due to header params
+		
+		//in PersonVersioningController.java file
+		@RestController
+		PersonVersioningController {
+			
+			@GetMapping(value="/person/produces", produces="application/vnd.company.app-v1+json")
+			public PersonV1 producesV1(){
+				return new PersonV1("Bob Charlie");
+			}
+			
+			@GetMapping(value="/person/produces", produces="application/vnd.company.app-v1+json")
+			public PersonV2 producesV2(){
+				return new PersonV2(new Name("Bob", "Charlie"));
+			}
+		}
+		
+
+		
+implement basic authentication 
+	send user id and password as part of request
+	
+	configure pom.xml for basic authentication
+		add spring-boot-starter-security 
+			**triggers many other jars to be download
+			**when compile it will generated a default security password in the *log
+				make sure using the most recent password
+				
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-starter-security</artifactId>
+			</dependency>
+	
+	to access any uri in postman
+		go to Authorization
+			Type: Basic Auth, Username: user, Password: password generated in log
+		
+	can configure user name and password in application.properties
+		
+		//in application.properties file
+		security.user.name=my_username
+		security.user.password=my_password
+			
+			
+		
+	
+	
+	
+	

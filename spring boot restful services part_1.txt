@@ -161,6 +161,80 @@ creating simple service
 			{message: "Hello World"}
 		
 	
+Spring Boot auto config and dispatcher servlet
+	
+	set spring framework to *debug mode to see more details
+		add one line to application.properties file
+			
+			logging.level.org.springframework = debug
 		
+		check AUTO-CONFIGURATION REPORT
+			**auto config happens because of spring boot auto configuration
+			**spring boot looks at all the classes, jars available on the *classpath
+			**and base on whatever is on classpath, it tries to do auto configuration
+			
+			for example:
+				DispatcherServletAutoConfiguration matched
+					because dispatcher servlet is found on class path
+		
+	**dispatcher servlet is handling all the requests
+		**dispatcher servlet is the front end controller for spring mvc 
+			all request goes to dispatcher servlet firstproject
+		**dispatcher servlet knows all the different mappings in the application
+		
+	@RestController is decorated with @ResponseBody
+		@ResponseBody takes response from controller 
+			and maps into other format by a message convertor
+			and returns back the message in the new format
+		
+
+enhancing service with path variable
+	get user with given id
+		GET /users/{id}
+	**id is a path parameter
+	
+	**use @PathVariable to decorate function *parameter
+	**so spring will take the *value from uri and use it as function *argument
+
+		@RestController
+		public class HelloWorldContoller{
+			// for /hello-world/path-variable/Jin
+			// Jin will make into name parameter
+			@GetMapping(path="/hello-world/path-variable/{name}")
+			public HelloWorldBean helloWorldPathVariable(@PathVariable String name){
+				return new HelloWorldBean(String.format("Hello World, %s", name));
+			} 
+		}
+	
+	
+creating user bean and user service	
+	create user bean class
+		user has id, name, birthday, getter, setter, toString, constructor
+
+	create user DAO class
+		responsible for going into db and getting user info and returning user bean back
+		
+		**decorate UserDaoService class with @Component
+			so that this class will be manage by spring
+			
+			// in UserDaoService.java file
+			@Component
+			public class UserDaoService{
+				private static List<User> users = new ArrayList<>();
+				static{
+					users.add(new User(1, "Jin", new Date()));
+					users.add(new User(2, "Erica", new Date()));
+				}
+				// public List<User> findAll()
+				// public User save(User user)
+				// public User findOne(int id)
+				
+			}
+			
+		
+		
+	
+	
+	
 	
 			
