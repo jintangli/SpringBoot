@@ -1,0 +1,209 @@
+JPA
+	introduction: history, JDBC, SpringJDBC, myBatis
+	JPA Concepts: mappings, entity, entity manageer
+	fromeworks: hibernate, spring data, spring data jpa,
+				spring boot, in memory database h2
+				
+Object Relational impedence mismatch
+	JPA = java persistence api
+	
+	what JPA try to solve
+		object to relational database mappings
+			mismatches between object and talbe
+				** mismatch name and type betwen object field to table column
+				** cannot do object inheritance in db tables
+					one table: for parent and all subclasses
+						** add column for class name 
+						** add columns for all common fields
+						** add columns for specific fields from each class
+	
+world before JPA: JDBC, SpringJDBC and myBatis
+	need to write *queries when using JDBC, SpringJDBC and myBatis
+		queries have parameters
+			need to set values for this queries
+		
+		**all three of them still uses *queries
+			**need to update queries whenever database *change
+	
+	excute the queries
+	
+	when the result comes back for select queries
+		need to iterate through the result and set values for object
+		
+	JDBC use connection, statement, PreparedStatement, and ResultSet for above steps
+	
+	SpringJDBC provides a layer on top of JDBC
+		** object to queries mapping
+			NOT object to table mapping
+		use concept like JDBCTemplate
+			** but basic approach is still the same
+				need to write the queries
+		make mapping parameters t0 queries *easy
+		make mapping database result to object *easy
+	
+	myBatis provides a mapping framework
+		** still use queries
+			** provides mapping from column name to object field
+				**using xml or java annotation
+				
+	
+introduction to JPA
+	**JPA provides *mapping
+		mapping classes to tables
+			**using: Entities, Mapping, Relationships, 
+				     EntityManager, Criteria API, JPQL
+				   
+		JPQL for searching the database
+		
+		
+creating a JPA project using Spring initializer
+	**choose JPA as one of the dependencies when creating a Spring Boot project
+		selected dependencies: web, jpa, H2
+		
+	**relationship between JPA and Hibernate
+		JPA is a specification
+		Hibernate implements JPA
+			in the java classPath
+				hibernate-core-5.2.10
+				hibernate-jpa-2.1-api-1.0.0
+				
+		JPA defines all the annotations
+			in the java classPath
+				hibernate-jpa-2.1-api-1.0.0
+					javax.persistence
+					javax.persistence.criteria
+					javax.persistence.metamodel
+					javax.persistence.spi
+					
+		after putting all the mappings and annotations in a class
+			hibernate will read them and understand them
+				and save Entities into database
+				
+
+Defining a JPA Entity
+	creating entity called user
+		**JPA expects a *default constructor in every class
+			protected User(){}
+			
+	** use @Entity to map class to table
+		import javax.persistence.Entity;
+		
+	** use @Id to specify a class *field as primary key
+	
+	** use @GeneratedValue to have database auto generate value for primary key
+	
+
+Defining a service to manage the Entity - UserService and EntityManager
+	create service class UserDAOService 
+		**decorate UserDAOService with @Repository
+			@Repository indicates something which interacts with database
+			
+		**decorate UserDAOService with @Transactional
+			@Transactional says each method in this class would be involved in a transaction
+		
+		create an instance of EntityManager to get value from database
+			decorate it with @PersistenceContext
+			
+			@PersistenceContext
+			private EntityManager entityManager;
+	
+		call *persist() method to *manage and save object into database
+			persist() method manage the user object
+				calling the persist() method puts user object in *persistence context
+					EntityManager starts tracking user object in the persistence context
+				
+				
+			//in UserDAOService.java file
+			
+			@Repository
+			@Transactional
+			public class UserDAOService{
+			
+				@PersistenceContext
+				private EntityManager entityManager;
+				
+				public long insert(User user){
+					entityManager.persist(user);
+					return user.getId();
+				}
+			
+			}
+			
+ 
+using command line runner to save the user to database
+	command line runner are executed when the context launches up
+		when application starts the code in the command line runner gets executed
+		
+	create new class UserDAOServiceCommandLineRunner implements CommandLineRunner
+		decorate with @Component to make it manage by spring
+			
+	Override the run() method to save user to database
+		
+		//in UserDAOServiceCommandLineRunner.java file
+		
+		@Component
+		public class UserDAOServiceCommandLineRunner implements CommandLineRunner{
+			private static final Logger log = 
+				LoggerFactory.getLogger(UserDAOServiceCommandLineRunner.class);
+			
+			@Autowired
+			private UserDAOService userDaoService;
+			
+			@Override
+			public void run(String... arg0) throws Exception{
+				User user = new User("Jack", "Admin");
+				long insert = userDaoService.insert(user);
+				log.info("New User is created: " + user);
+			}
+		}
+	
+	data is saved into H2 database running in memory
+		to view data in H2 database
+			http://localhost:8080/h2-console
+		use db url jdbc:h2:mem:testdb
+		**using H2 is good for unit testing in spring boot
+		
+	tables are created based on the entities defined
+	
+	configure JPA to show generated SQL
+		in application.properties file
+			spring.jpa.show-sql=true
+			spring.h2.console.enabled=true
+			logging.level.org.springframework=debug
+
+
+	
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+
+	
+		
+	
+			
+	

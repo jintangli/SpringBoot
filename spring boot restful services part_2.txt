@@ -166,7 +166,7 @@ implement generic exception handling for all resource
 	Spring already has it *own/default exception structure
 		which contains timestamp, status, error, message, path,
 		
-	** to define/customize an organization's own standard exception structure used by all RESTful service
+	** to define an organization's own customized standard exception structure used by all RESTful service
 		
 		create new class ExceptionResponse
 			** assuming each exception should have the following *structure info
@@ -212,7 +212,6 @@ implement generic exception handling for all resource
 																					ex.getMessage(), 
 																					request.getDescription(false));
 						
-						return new ResponseEntity(exceptionResponse, HttpStatus.INTERNAL_SERVER_ERROR);
 				
 				}
 			
